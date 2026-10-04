@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>习惯养成与番茄奖励系统</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --tomato-color: #FF5722;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            min-height: 100vh;
+        }
+
+        .layout-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        @media (min-width: 900px) {
+            .layout-container {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .main-column {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .sidebar-column {
+                width: 320px;
+                flex-shrink: 0;
+            }
+        }
+
+        .main-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .module {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 15px;
+        }
+
+        h2 {
+            font-size: 17px;
+            color: #2c3e50;
+            margin: 0 0 12px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .reset-btn {
+            background: #ff4d4f;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        .reset-btn:active {
+            background: #d9363e;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 6px 4px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #555;
+            font-size: 12px;
+        }
+
+        .checkbox-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 6px;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+
+        .streak-highlight {
+            color: #e67e22;
+            font-weight: bold;
+        }
+
+        .bonus-area {
+            margin-top: 12px;
+            padding: 12px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .bonus-input {
+            flex: 1;
+            min-width: 150px;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .bonus-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .bonus-input.locked {
+            background-color: #eee;
+            color: #999;
+        }
+
+        .claim-btn {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .claim-btn:active {
+            background: #388e3c;
+        }
+
+        .tomato-grid-container {
+            max-height: 320px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px dashed #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            background: #fafafa;
+            margin-bottom: 12px;
+        }
+
+        .tomato-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tomato-icon {
+            width: 32px;
+            height: 32px;
+            background-color: #e0e0e0;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: inset 0 -3px 6px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .tomato-icon::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 8px solid #e0e0e0;
+            transition: border-bottom-color 0.15s ease;
+        }
+
+        .tomato-icon.active {
+            background-color: var(--tomato-color);
+            transform: scale(1.05);
+            box-shadow: 0 0 6px rgba(255, 87, 34, 0.5), inset 0 -3px 6px rgba(0,0,0,0.2);
+        }
+
+        .tomato-icon.active::before {
+            border-bottom-color: #4CAF50;
+        }
+
+        .art-task-area {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .art-task-title {
+            font-weight: bold;
+            color: #ff8f00;
+            font-size: 14px;
+        }
+
+        .art-task-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .art-task-btn {
+            background: #ffb300;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            min-width: 44px;
+        }
+        .art-task-btn:active {
+            background: #ffa000;
+        }
+        
+        .art-task-btn.minus {
+            background: #ff7043;
+        }
+        .art-task-btn.minus:active {
+            background: #f4511e;
+        }
+
+        .art-task-count {
+            font-size: 18px;
+            font-weight: bold;
+            color: #e65100;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .tomato-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            background: #fff;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+        }
+
+        @media (min-width: 600px) {
+            .tomato-summary {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .tomato-stat {
+            text-align: center;
+        }
+
+        .tomato-stat-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+        }
+
+        .tomato-stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .money-highlight {
+            color: #e74c3c;
+        }
+
+        .redeem-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 500px) {
+            .redeem-section {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .redeem-card {
+            background: #fafafa;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .redeem-card.available {
+            border-color: var(--primary-color);
+            background: #e8f5e9;
+            box-shadow: 0 0 12px rgba(76, 175, 80, 0.2);
+        }
+
+        .redeem-amount {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .redeem-desc {
+            font-size: 11px;
+            color: #777;
+            line-height: 1.4;
+        }
+
+        .redeem-btn {
+            background: #ccc;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: not-allowed;
+            width: 100%;
+            min-height: 44px;
+        }
+
+        .redeem-btn.active {
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+        .redeem-btn.active:active {
+            background: #388e3c;
+        }
+
+        .history-table {
+            width: 100%;
+            font-size: 12px;
+            border-collapse: collapse;
+        }
+        
+        .history-table th, .history-table td {
+            padding: 6px 4px;
+            border: 1px solid #eee;
+            text-align: left;
+        }
+        
+        .history-table th {
+            background: #f5f5f5;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .history-table td.amount {
+            color: #e74c3c;
+            font-weight: bold;
+            text-align: right;
+            white-space: nowrap;
+        }
+        
+        .history-table td.date {
+            font-size: 10px;
+            color: #999;
+            white-space: nowrap;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #aaa;
+            padding: 15px 0;
+            font-size: 12px;
+        }
+
+        /* ============ 自定义弹窗 ============ */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .modal-msg {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            min-width: 80px;
+        }
+        .modal-btn.cancel {
+            background: #eee;
+            color: #555;
+        }
+        .modal-btn.confirm {
+            background: var(--primary-color);
+            color: #fff;
+        }
+        .modal-btn.confirm.danger {
+            background: #ff4d4f;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout-container">
+    <div class="main-column">
+        
+        <div class="module">
+            <h2>
+                📅 21天早起打卡
+                <button class="reset-btn" onclick="resetHabit()">🔄 重置</button>
+            </h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="12%">天</th>
+                            <th width="28%">早起</th>
+                            <th width="30%">连续</th>
+                            <th width="30%">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            
+            <div class="bonus-area">
+                <span style="font-weight:bold; color:#555; font-size:13px; white-space:nowrap;" id="bonusLabel">额外奖励:</span>
+                <input type="text" id="bonusInput" class="bonus-input locked" placeholder="连续21天后解锁..." disabled>
+                <button id="claimHabitBtn" class="claim-btn" style="display:none;" onclick="claimHabitReward()">查收</button>
+            </div>
+        </div>
+
+        <div class="module">
+            <h2>🍅 番茄专注 & 作品任务</h2>
+
+            <div class="tomato-grid-container">
+                <div class="tomato-grid" id="tomatoGrid"></div>
+            </div>
+
+            <div class="art-task-area">
+                <span class="art-task-title">🎨 作品 (每个+50元)</span>
+                <div class="art-task-controls">
+                    <button class="art-task-btn minus" onclick="removeArtTask()">−</button>
+                    <span class="art-task-count" id="artTaskCount">0</span>
+                    <button class="art-task-btn" onclick="addArtTask()">+</button>
+                </div>
+            </div>
+
+            <div class="tomato-summary">
+                <div class="tomato-stat">
+                    <div class="tomato-stat-label">🍅 番茄</div>
+                    <div class="tomato-stat-value" id="completedTomatoes">0</div>
+                </div>
+                <div class="tomato-stat">
+                    <div class="tomato-stat-label">番茄金额</div>
+                    <div class="tomato-stat-value money-highlight" id="tomatoMoney">0</div>
+                </div>
+                <div class="tomato-stat">
+                    <div class="tomato-stat-label">🎨 作品金额</div>
+                    <div class="tomato-stat-value" style="color:#ff8f00;" id="artMoney">0</div>
+                </div>
+                <div class="tomato-stat">
+                    <div class="tomato-stat-label">💰 总金额</div>
+                    <div class="tomato-stat-value money-highlight" id="totalMoney">0</div>
+                </div>
+            </div>
+
+            <div class="redeem-section" id="redeemSection"></div>
+        </div>
+
+    </div>
+
+    <div class="sidebar-column">
+        <div class="module">
+            <h2>📜 奖励记录</h2>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>内容</th>
+                            <th style="text-align:right;">金额</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+                <div class="empty-history" id="emptyHistory">暂无记录</div>
+            </div>
+            <button class="reset-btn" style="width:100%; margin-top:12px; background:#999;" onclick="clearHistory()">清空历史</button>
+        </div>
+    </div>
+</div>
+
+<!-- 自定义弹窗 -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+        <div class="modal-title" id="modalTitle">提示</div>
+        <div class="modal-msg" id="modalMsg"></div>
+        <div class="modal-buttons">
+            <button class="modal-btn cancel" id="modalCancel" onclick="closeModal()">取消</button>
+            <button class="modal-btn confirm" id="modalConfirm">确定</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const TOMATO_PRICE = 25;
+    const ART_PRICE = 50;
+    const TOTAL_TOMATO_SLOTS = 800;
+    const REDEEM_LEVELS = [
+        { amount: 5000, clear: false },
+        { amount: 10000, clear: false },
+        { amount: 20000, clear: true }
+    ];
+
+    // ============ 自定义弹窗系统 ============
+    let pendingConfirmCallback = null;
+    let pendingAlertCallback = null;
+
+    function showConfirm(title, msg, callback, isDanger) {
+        const overlay = document.getElementById('modalOverlay');
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalMsg').textContent = msg;
+        document.getElementById('modalCancel').style.display = 'inline-block';
+        const confirmBtn = document.getElementById('modalConfirm');
+        confirmBtn.textContent = '确定';
+        confirmBtn.className = 'modal-btn confirm' + (isDanger ? ' danger' : '');
+        pendingConfirmCallback = callback;
+        pendingAlertCallback = null;
+        overlay.classList.add('show');
+    }
+
+    function showAlert(title, msg, callback) {
+        const overlay = document.getElementById('modalOverlay');
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalMsg').textContent = msg;
+        document.getElementById('modalCancel').style.display = 'none';
+        const confirmBtn = document.getElementById('modalConfirm');
+        confirmBtn.textContent = '知道了';
+        confirmBtn.className = 'modal-btn confirm';
+        pendingAlertCallback = callback;
+        pendingConfirmCallback = null;
+        overlay.classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('show');
+        pendingConfirmCallback = null;
+        pendingAlertCallback = null;
+    }
+
+    document.getElementById('modalConfirm').addEventListener('click', function() {
+        const cb = pendingConfirmCallback;
+        const alertCb = pendingAlertCallback;
+        document.getElementById('modalOverlay').classList.remove('show');
+        pendingConfirmCallback = null;
+        pendingAlertCallback = null;
+        if (cb) cb();
+        if (alertCb) alertCb();
+    });
+
+    // 点击遮罩关闭
+    document.getElementById('modalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // ============ 数据 ============
+    let savedData = JSON.parse(localStorage.getItem('habitSystemDataV5')) || {
+        days: Array.from({ length: 21 }, () => ({ earlyRise: false })),
+        bonusText: '',
+        completedTomatoes: 0,
+        artTasks: 0,
+        history: []
+    };
+
+    if (!savedData.days) savedData.days = Array.from({ length: 21 }, () => ({ earlyRise: false }));
+    if (savedData.bonusText === undefined) savedData.bonusText = '';
+    if (savedData.completedTomatoes === undefined) savedData.completedTomatoes = 0;
+    if (savedData.artTasks === undefined) savedData.artTasks = 0;
+    if (!savedData.history) savedData.history = [];
+
+    // ============ 21天打卡 ============
+    const tableBody = document.getElementById('tableBody');
+
+    function renderHabitTable() {
+        tableBody.innerHTML = '';
+        let streak = 0;
+
+        for (let i = 0; i < 21; i++) {
+            const dayData = savedData.days[i];
+            if (dayData.earlyRise) streak++;
+            else streak = 0;
+
+            const row = document.createElement('tr');
+            
+            const tdDay = document.createElement('td');
+            tdDay.textContent = i + 1;
+
+            const tdRise = document.createElement('td');
+            const label = document.createElement('label');
+            label.className = 'checkbox-wrapper';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = dayData.earlyRise;
+            checkbox.addEventListener('change', () => toggleEarlyRise(i));
+            label.appendChild(checkbox);
+            tdRise.appendChild(label);
+
+            const tdStreak = document.createElement('td');
+            tdStreak.className = streak > 0 ? 'streak-highlight' : '';
+            tdStreak.textContent = streak > 0 ? '🔥 ' + streak + '天' : '-';
+
+            const tdStatus = document.createElement('td');
+            tdStatus.textContent = streak >= 21 ? '🏆 完成' : (streak > 0 ? '进行中' : '-');
+            tdStatus.style.fontSize = '12px';
+
+            row.appendChild(tdDay);
+            row.appendChild(tdRise);
+            row.appendChild(tdStreak);
+            row.appendChild(tdStatus);
+            tableBody.appendChild(row);
+        }
+
+        const bonusInput = document.getElementById('bonusInput');
+        const bonusLabel = document.getElementById('bonusLabel');
+        const claimHabitBtn = document.getElementById('claimHabitBtn');
+        
+        if (streak >= 21) {
+            bonusInput.disabled = false;
+            bonusInput.classList.remove('locked');
+            bonusInput.placeholder = '🎉 写下奖励...';
+            bonusLabel.textContent = '🎉 奖励:';
+            bonusLabel.style.color = '#4CAF50';
+            claimHabitBtn.style.display = 'inline-block';
+        } else {
+            bonusInput.disabled = true;
+            bonusInput.classList.add('locked');
+            bonusInput.placeholder = '连续21天后解锁...';
+            bonusLabel.textContent = `奖励 (${streak}天):`;
+            bonusLabel.style.color = '#555';
+            claimHabitBtn.style.display = 'none';
+        }
+        
+        bonusInput.value = savedData.bonusText;
+    }
+
+    function toggleEarlyRise(index) {
+        savedData.days[index].earlyRise = !savedData.days[index].earlyRise;
+        saveData();
+        renderHabitTable();
+    }
+
+    document.getElementById('bonusInput').addEventListener('input', function(e) {
+        savedData.bonusText = e.target.value;
+        saveData();
+    });
+
+    function claimHabitReward() {
+        if (!savedData.bonusText.trim()) {
+            showAlert('提示', '请先写下奖励内容！');
+            return;
+        }
+        showConfirm('查收确认', 
+            '查收本次21天奖励？\n\n奖励：' + savedData.bonusText + '\n\n查收后打卡清零。',
+            function() {
+                const date = new Date().toLocaleDateString('zh-CN');
+                savedData.history.unshift({
+                    date: date,
+                    text: '🏆 21天早起：' + savedData.bonusText,
+                    amount: 0
+                });
+                savedData.days = Array.from({ length: 21 }, () => ({ earlyRise: false }));
+                savedData.bonusText = '';
+                saveData();
+                renderHabitTable();
+                renderHistory();
+                showAlert('成功', '✅ 已查收！');
+            },
+            false
+        );
+    }
+
+    function resetHabit() {
+        showConfirm('重置确认', '重置所有打卡记录？',
+            function() {
+                savedData.days = Array.from({ length: 21 }, () => ({ earlyRise: false }));
+                savedData.bonusText = '';
+                saveData();
+                renderHabitTable();
+                showAlert('成功', '✅ 已重置！');
+            },
+            true
+        );
+    }
+
+    // ============ 番茄总表 ============
+    const tomatoGrid = document.getElementById('tomatoGrid');
+    const completedTomatoesEl = document.getElementById('completedTomatoes');
+    const tomatoMoneyEl = document.getElementById('tomatoMoney');
+    const artTaskCountEl = document.getElementById('artTaskCount');
+    const artMoneyEl = document.getElementById('artMoney');
+    const totalMoneyEl = document.getElementById('totalMoney');
+    const redeemSection = document.getElementById('redeemSection');
+
+    function renderTomatoGrid() {
+        tomatoGrid.innerHTML = '';
+        const completed = savedData.completedTomatoes;
+
+        for (let i = 0; i < TOTAL_TOMATO_SLOTS; i++) {
+            const tomato = document.createElement('div');
+            tomato.className = `tomato-icon ${i < completed ? 'active' : ''}`;
+            tomato.addEventListener('click', () => {
+                if (i < completed) {
+                    savedData.completedTomatoes = i;
+                } else {
+                    savedData.completedTomatoes = i + 1;
+                }
+                saveData();
+                renderTomatoGrid();
+            });
+            tomatoGrid.appendChild(tomato);
+        }
+
+        updateSummaryAndRedeem();
+    }
+
+    function updateSummaryAndRedeem() {
+        const completed = savedData.completedTomatoes;
+        const tomatoMoney = completed * TOMATO_PRICE;
+        const artMoney = savedData.artTasks * ART_PRICE;
+        const total = tomatoMoney + artMoney;
+
+        completedTomatoesEl.textContent = completed;
+        tomatoMoneyEl.textContent = tomatoMoney;
+        artTaskCountEl.textContent = savedData.artTasks;
+        artMoneyEl.textContent = artMoney;
+        totalMoneyEl.textContent = total;
+
+        redeemSection.innerHTML = '';
+        REDEEM_LEVELS.forEach(level => {
+            const isAvailable = total >= level.amount;
+            const card = document.createElement('div');
+            card.className = `redeem-card ${isAvailable ? 'available' : ''}`;
+            const descText = level.clear ? '⚠️ 兑换后全部清空' : '仅扣对应金额';
+            
+            card.innerHTML = `
+                <div class="redeem-amount">${level.amount}元</div>
+                <div class="redeem-desc">${descText}</div>
+                <button class="redeem-btn ${isAvailable ? 'active' : ''}" 
+                        ${isAvailable ? '' : 'disabled'}
+                        onclick="redeemReward(${level.amount}, ${level.clear})">
+                    ${isAvailable ? '🎁 兑换' : '未达成'}
+                </button>
+            `;
+            redeemSection.appendChild(card);
+        });
+    }
+
+    function addArtTask() {
+        savedData.artTasks++;
+        saveData();
+        updateSummaryAndRedeem();
+    }
+
+    function removeArtTask() {
+        if (savedData.artTasks > 0) {
+            savedData.artTasks--;
+            saveData();
+            updateSummaryAndRedeem();
+        }
+    }
+
+    function redeemReward(level, clearAll) {
+        const tomatoMoney = savedData.completedTomatoes * TOMATO_PRICE;
+        const artMoney = savedData.artTasks * ART_PRICE;
+        const total = tomatoMoney + artMoney;
+
+        if (total < level) {
+            showAlert('提示', '金额不足！');
+            return;
+        }
+
+        let msg = `确定兑换 ${level}元？\n\n总金额：${total}元\n🍅 番茄：${savedData.completedTomatoes}个\n🎨 作品：${savedData.artTasks}个\n\n`;
+        msg += clearAll ? '⚠️ 兑换后全部清空！' : `ℹ️ 将扣除 ${level}元，剩余保留。`;
+
+        showConfirm('兑换确认', msg, function() {
+            const date = new Date().toLocaleDateString('zh-CN');
+            
+            let remainingTomatoes = savedData.completedTomatoes;
+            let remainingArtTasks = savedData.artTasks;
+            let remainingValue = level;
+
+            if (clearAll) {
+                remainingTomatoes = 0;
+                remainingArtTasks = 0;
+            } else {
+                const tomatoDeductValue = Math.min(remainingTomatoes * TOMATO_PRICE, remainingValue);
+                const tomatoDeductCount = Math.ceil(tomatoDeductValue / TOMATO_PRICE);
+                remainingTomatoes = Math.max(0, remainingTomatoes - tomatoDeductCount);
+                remainingValue -= tomatoDeductValue;
+                
+                if (remainingValue > 0) {
+                    const artDeductCount = Math.ceil(remainingValue / ART_PRICE);
+                    remainingArtTasks = Math.max(0, remainingArtTasks - artDeductCount);
+                }
+            }
+
+            let textParts = [];
+            if (savedData.completedTomatoes > 0) textParts.push(`番茄${savedData.completedTomatoes}`);
+            if (savedData.artTasks > 0) textParts.push(`作品${savedData.artTasks}`);
+            
+            savedData.history.unshift({
+                date: date,
+                text: `🎁 兑换${level}元 (${textParts.join('+')})`,
+                amount: level
+            });
+
+            savedData.completedTomatoes = remainingTomatoes;
+            savedData.artTasks = remainingArtTasks;
+            
+            saveData();
+            renderTomatoGrid();
+            renderHistory();
+            
+            showAlert('成功', clearAll ? `✅ 已兑换 ${level}元，已全部清空。` : `✅ 已兑换 ${level}元！\n剩余番茄：${remainingTomatoes}\n剩余作品：${remainingArtTasks}`);
+        }, false);
+    }
+
+    // ============ 奖励记录 ============
+    const historyBody = document.getElementById('historyBody');
+    const emptyHistory = document.getElementById('emptyHistory');
+
+    function renderHistory() {
+        historyBody.innerHTML = '';
+        if (savedData.history.length === 0) {
+            emptyHistory.style.display = 'block';
+            return;
+        }
+        emptyHistory.style.display = 'none';
+        savedData.history.forEach(item => {
+            const tr = document.createElement('tr');
+            const tdDate = document.createElement('td');
+            tdDate.className = 'date';
+            tdDate.textContent = item.date;
+            const tdText = document.createElement('td');
+            tdText.textContent = item.text;
+            const tdAmount = document.createElement('td');
+            tdAmount.className = 'amount';
+            tdAmount.textContent = item.amount > 0 ? item.amount + '元' : '-';
+            tr.appendChild(tdDate);
+            tr.appendChild(tdText);
+            tr.appendChild(tdAmount);
+            historyBody.appendChild(tr);
+        });
+    }
+
+    function clearHistory() {
+        showConfirm('清空确认', '清空所有奖励记录？', function() {
+            savedData.history = [];
+            saveData();
+            renderHistory();
+            showAlert('成功', '✅ 已清空历史记录！');
+        }, true);
+    }
+
+    function saveData() {
+        localStorage.setItem('habitSystemDataV5', JSON.stringify(savedData));
+    }
+
+    renderHabitTable();
+    renderTomatoGrid();
+    renderHistory();
+</script>
+
+</body>
+</html>
